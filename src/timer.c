@@ -46,23 +46,6 @@
  *
  */
 
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include <net/route.h>
-#include <netinet/in.h>
-#include <netinet/icmp6.h>
-#ifdef __linux__
-#include <linux/mroute6.h>
-#else
-#include <netinet6/ip6_mroute.h>
-#endif
-#include <stdlib.h>
-#include <syslog.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
 #include "defs.h"
 #include "pim6.h"
 #include "pimd.h"
@@ -653,7 +636,7 @@ age_routes()
 	     */
 
 	    IF_TIMEOUT(mrtentry_rp->rs_timer)
-		;
+	    { }
 	    /* routing entry */
 
 	    if ((TIMEOUT(mrtentry_rp->timer))
@@ -862,7 +845,7 @@ age_routes()
 		     * for (*,G) entry, but keep this around.
 		     */
 		    IF_TIMEOUT(mrtentry_grp->rs_timer)
-			;
+		    { }
 
 		    /* routing entry */
 

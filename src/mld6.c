@@ -74,26 +74,6 @@
  *
  */
 
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
-#include <net/if.h>
-#include <net/route.h>
-#include <netinet/in.h>
-#include <netinet/icmp6.h>
-#ifdef __linux__
-#include <linux/mroute6.h>
-#else
-#include <netinet6/ip6_mroute.h>
-#endif
-#include <netinet/ip6.h>
-#include <arpa/inet.h>
-#include <stdlib.h>
-#include <syslog.h>
-#include <string.h>
-#include <stdio.h>
-#include <errno.h>
 #include "defs.h"
 #include "vif.h"
 #include "mrt.h"
@@ -347,7 +327,7 @@ accept_mld6(recvlen)
 	int ifindex = 0;
 	struct sockaddr_in6 *src = (struct sockaddr_in6 *) rcvmh.msg_name;
 
-	if (recvlen < sizeof(struct mld_hdr))
+	if (recvlen < (int)sizeof(struct mld_hdr))
 	{
 		log_msg(LOG_WARNING, 0,
 		    "received packet too short (%u bytes) for MLD header",
@@ -580,7 +560,7 @@ mld_append_rtalert_custom(struct cmsghdr *cmsgp, int hbhlen)
                                  IP6OPT_PAD1, IP6OPT_PAD1 };
 
     if (hbhlen != sizeof(hbhbuf) && hbhlen != 8) {
-        log_msg(LOG_ERR, 0, "%s: invalid hbhlen, %i vs. %i vs. 8",
+        log_msg(LOG_ERR, 0, "%s: invalid hbhlen, %i vs. %zu vs. 8",
 		__func__, hbhlen, sizeof(hbhbuf));
         return cmsgp;
     }

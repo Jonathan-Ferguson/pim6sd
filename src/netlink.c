@@ -11,40 +11,10 @@
  * $Id: netlink.c,v 1.4 2008/05/05 11:49:55 suzsuz Exp $
  */
 
-#ifdef HAVE_CONFIG_H
-#include <../include/config.h>
-#endif
-
-#ifndef HAVE_NETLINK
-/* not compiled */
-#else
-
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/file.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <stdlib.h>
-#include <strings.h>
-#include <paths.h>
-#include <net/if.h>
-#include <string.h>
-#ifdef __linux__
-#include <linux/mroute6.h>
-#endif
-#include <syslog.h>
-#include <errno.h>
-#include <time.h>
 #include "defs.h"
 #include "vif.h"
 #include "debug.h"
 #include "inet6.h"
-
-#ifdef __linux__
-#include <linux/rtnetlink.h>
-#endif
 
 static int routing_socket = -1;
 static __u32 seq;
@@ -58,7 +28,7 @@ static int addattr_l(struct nlmsghdr *n, int maxlen, int type, const void *data,
 	struct rtattr *rta;
 	int len = RTA_LENGTH(alen);
 
-	if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen)
+	if ((int)(NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len)) > maxlen)
 		return -1;
 
 	rta = (struct rtattr *)(((char *)n) + NLMSG_ALIGN(n->nlmsg_len));
@@ -98,7 +68,7 @@ static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int le
 int init_routesock(void)
 {
 	struct sockaddr_nl local;
-	int addr_len;
+	socklen_t addr_len;
 
 	routing_socket = socket(PF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
 	if (routing_socket < 0) {
@@ -186,7 +156,7 @@ int k_req_incoming(struct sockaddr_in6 *source, struct rpfctl *rpf)
 	}
 
 	do {
-		int alen = sizeof(addr);
+		socklen_t alen = sizeof(addr);
 
 		l = recvfrom(routing_socket, buf, sizeof(buf), 0,
 			     (struct sockaddr *)&addr, &alen);
@@ -196,7 +166,7 @@ int k_req_incoming(struct sockaddr_in6 *source, struct rpfctl *rpf)
 			log_msg(LOG_WARNING, errno, "Error writing to routing socket");
 			return FALSE;
 		}
-	} while (n->nlmsg_seq != seq || n->nlmsg_pid != pid);
+	} while (n->nlmsg_seq != seq || (pid_t)n->nlmsg_pid != pid);
 
 	if (n->nlmsg_type != RTM_NEWROUTE) {
 		if (n->nlmsg_type != NLMSG_ERROR)
@@ -245,7 +215,7 @@ static int getmsg(struct rtmsg *rtm, int msglen, struct rpfctl *rpf)
 		int ifindex = *(int *)RTA_DATA(rta[RTA_OIF]);
 
 		for (vifi = 0, v = uvifs; vifi < numvifs; ++vifi, ++v) {
-			if (v->uv_ifindex == ifindex)
+			if ((int)v->uv_ifindex == ifindex)
 				break;
 		}
 		if (vifi >= numvifs) {
@@ -278,5 +248,3 @@ static int getmsg(struct rtmsg *rtm, int msglen, struct rpfctl *rpf)
 
 	return TRUE;
 }
-
-#endif /* HAVE_NETLINK */

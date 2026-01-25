@@ -102,32 +102,6 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <../include/config.h>
-#endif
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/queue.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include <net/route.h>
-#include <netinet/in.h>
-#include <netinet/icmp6.h>
-#ifdef HAVE_NETINET6_PIM6_H
-#include <netinet6/pim6.h>
-#endif
-#ifdef __linux__
-#include <linux/mroute6.h>
-#include <linux/pim.h>
-#else
-#include <netinet6/ip6_mroute.h>
-#endif
-#include <netinet/ip6.h>
-#include <syslog.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
 #include "defs.h"
 #include "mrt.h"
 #include "vif.h"
@@ -144,7 +118,7 @@
 #include "routesock.h"
 
 #ifndef IPV6_VERSION
-#define        IPV6_VERSION            0x60
+#define IPV6_VERSION           0x60
 #endif
 #ifndef IPV6_VERSION_MASK
 #define IPV6_VERSION_MASK      0xf0
@@ -232,7 +206,7 @@ receive_pim6_hello(src, pim_message, datalen)
     /* Get Hello options (including Holdtime in seconds) from the message. */
     memset(&hopts, 0, sizeof(hopts));
     parse_pim6_hello(pim_message, datalen, src, &hopts);
-    if (hopts.bitmap & PIM_HELLO_HOLDTIME_BIT == 0) {
+    if ((hopts.bitmap & PIM_HELLO_HOLDTIME_BIT) == 0) {
 	result = FALSE;
 	goto end;
     }
@@ -277,7 +251,7 @@ receive_pim6_hello(src, pim_message, datalen)
 	/* check generation-id */
 	if (hopts.bitmap & PIM_HELLO_GENID_BIT) {
 	    if (hopts.genid != nbr->genid ||
-	        (nbr->options_bitmap & PIM_HELLO_GENID_BIT == 0)) {
+	        ((nbr->options_bitmap & PIM_HELLO_GENID_BIT) == 0)) {
 		IF_DEBUG(DEBUG_PIM_HELLO)
 		    log_msg(LOG_DEBUG, 0, "detected the GenID change");
 
@@ -323,7 +297,10 @@ receive_pim6_hello(src, pim_message, datalen)
      * right after `prev_nbr`
      */
 
-    new_nbr = (pim_nbr_entry_t *) malloc(sizeof(pim_nbr_entry_t));
+    new_nbr = malloc(sizeof(*new_nbr));
+    if (!new_nbr)
+	    log_msg(LOG_ERR, 0, "ran out of memory");	/* fatal */
+
     new_nbr->address 		= *src;
     new_nbr->aux_addrs		= (struct phaddr *) NULL;
     new_nbr->vifi 		= mifi;
@@ -735,11 +712,10 @@ parse_pim6_hello(pim_message, datalen, src, opts)
 		    }
 		}
 
-		if ((addr = (struct phaddr *)malloc(sizeof(*addr))) == NULL)
+		addr = calloc(1, sizeof(*addr));
+		if (!addr)
 		    log_msg(LOG_ERR, errno, "malloc failed in pim6 hello parsing");
 
-		/* XXX: we only use part of the structure */
-		memset(addr, 0, sizeof(*addr));
 		init_sin6(&addr->pa_addr);
 		addr->pa_addr.sin6_addr = encod_uniaddr.unicast_addr;
 		addr->pa_next = opts->addrs;
@@ -866,8 +842,8 @@ receive_pim6_register(reg_src, reg_dst, pim_message, datalen)
      * the check for NULL register messages. Thus, we always check this for
      * safety.
      */
-    if (sizeof(struct pim) + sizeof(pim_register_t) +
-	sizeof(struct ip6_hdr) > datalen) {
+    if ((int)(sizeof(struct pim) + sizeof(pim_register_t) +
+	sizeof(struct ip6_hdr)) > datalen) {
 	    IF_DEBUG(DEBUG_PIM_REGISTER)
 		    log_msg(LOG_INFO, 0,
 			"PIM register: short packet (len = %d) from %s",
@@ -1580,7 +1556,7 @@ receive_pim6_join_prune(src, dst, pim_message, datalen)
 	int srclen;
 
 	/* group addr + #join + #src */
-	if (datalen < PIM6_ENCODE_GRP_ADDR_LEN + sizeof(u_int32_t)) {
+	if (datalen < (int)(PIM6_ENCODE_GRP_ADDR_LEN + sizeof(u_int32_t))) {
 	    log_msg(LOG_NOTICE, 0,
 		"receive_pim6_join_prune: Join/Prune message from %s on %s is"
 		" too short to contain enough data",
@@ -2879,29 +2855,46 @@ get_jp6_working_buff()
 
     if (build_jp_message_pool_counter == 0)
     {
-	bjpm_ptr = (build_jp_message_t *) malloc(sizeof(build_jp_message_t));
+	bjpm_ptr = malloc(sizeof(*bjpm_ptr));
+	if (!bjpm_ptr)
+		log_msg(LOG_ERR, 0, "ran out of memory");	/* fatal */
+
 	bjpm_ptr->next = NULL;
-	bjpm_ptr->jp_message =
-	    (u_int8 *) malloc(MAX_JP_MESSAGE_SIZE +
-			      sizeof(pim_jp_encod_grp_t) +
-			      2 * sizeof(pim6_encod_src_addr_t));
+	bjpm_ptr->jp_message = malloc(MAX_JP_MESSAGE_SIZE +
+				      sizeof(pim_jp_encod_grp_t) +
+				      2 * sizeof(pim6_encod_src_addr_t));
+	if (!bjpm_ptr->jp_message)
+		log_msg(LOG_ERR, 0, "ran out of memory");	/* fatal */
+
 	bjpm_ptr->jp_message_size = 0;
 	bjpm_ptr->join_list_size = 0;
 	bjpm_ptr->join_addr_number = 0;
-	bjpm_ptr->join_list = (u_int8 *) malloc(MAX_JOIN_LIST_SIZE +
-					      sizeof(pim6_encod_src_addr_t));
+	bjpm_ptr->join_list = malloc(MAX_JOIN_LIST_SIZE +
+				     sizeof(pim6_encod_src_addr_t));
+	if (!bjpm_ptr->join_list)
+		log_msg(LOG_ERR, 0, "ran out of memory");	/* fatal */
+
 	bjpm_ptr->prune_list_size = 0;
 	bjpm_ptr->prune_addr_number = 0;
-	bjpm_ptr->prune_list = (u_int8 *) malloc(MAX_PRUNE_LIST_SIZE +
-					      sizeof(pim6_encod_src_addr_t));
+	bjpm_ptr->prune_list = malloc(MAX_PRUNE_LIST_SIZE +
+				      sizeof(pim6_encod_src_addr_t));
+	if (!bjpm_ptr->prune_list)
+		log_msg(LOG_ERR, 0, "ran out of memory");	/* fatal */
+
 	bjpm_ptr->rp_list_join_size = 0;
 	bjpm_ptr->rp_list_join_number = 0;
-	bjpm_ptr->rp_list_join = (u_int8 *) malloc(MAX_JOIN_LIST_SIZE +
-					      sizeof(pim6_encod_src_addr_t));
+	bjpm_ptr->rp_list_join = malloc(MAX_JOIN_LIST_SIZE +
+					sizeof(pim6_encod_src_addr_t));
+	if (!bjpm_ptr->rp_list_join)
+		log_msg(LOG_ERR, 0, "ran out of memory");	/* fatal */
+
 	bjpm_ptr->rp_list_prune_size = 0;
 	bjpm_ptr->rp_list_prune_number = 0;
-	bjpm_ptr->rp_list_prune = (u_int8 *) malloc(MAX_PRUNE_LIST_SIZE +
-					      sizeof(pim6_encod_src_addr_t));
+	bjpm_ptr->rp_list_prune = malloc(MAX_PRUNE_LIST_SIZE +
+					 sizeof(pim6_encod_src_addr_t));
+	if (!bjpm_ptr->rp_list_prune)
+		log_msg(LOG_ERR, 0, "ran out of memory");	/* fatal */
+
 	bjpm_ptr->curr_group = sockaddr6_any;
 	bjpm_ptr->curr_group_msklen = 0;
 	bjpm_ptr->holdtime = 0;
@@ -3517,7 +3510,7 @@ receive_pim6_bootstrap(src, dst, pim_message, datalen)
 				prefix_h2,
 				group_,
 				rpp_;
-    int i;
+    size_t i;
     struct uvif 		*v;
 
 

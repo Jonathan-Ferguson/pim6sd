@@ -42,25 +42,6 @@
  *
  */
 
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include <net/route.h>
-#include <netinet/in.h>
-#ifdef __linux__
-#include <linux/mroute6.h>
-#else
-#include <netinet6/ip6_mroute.h>
-#endif
-#include <netinet/icmp6.h>
-#include <syslog.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <netdb.h>
-#include <time.h>
 #include "defs.h"
 #include "vif.h"
 #include "mld6.h"
@@ -571,7 +552,7 @@ accept_multicast_record(vifi, mard, src, grp)
 		recv_listener_done(vifi, src, grp);
 		break;
 	    }
-	    /* FALLTHOUGH */
+	    /* FALLTHROUGH */
 	case MODE_IS_INCLUDE:
 	case ALLOW_NEW_SOURCES:
 	    for (j = 0; j < numsrc; j++) {
@@ -619,8 +600,8 @@ accept_multicast_record(vifi, mard, src, grp)
 			log_msg(LOG_DEBUG, 0,
 			    "The source doesn't exist , trying to add it");
 
-		    s = (struct listaddr *) malloc(sizeof(struct listaddr));
-		    if (s == NULL)
+		    s = malloc(sizeof(*s));
+		    if (!s)
 			log_msg(LOG_ERR, 0, "ran out of memory"); /* fatal */
 		    s->al_addr = source_sa;
 		    s->sources = NULL;
@@ -635,9 +616,8 @@ accept_multicast_record(vifi, mard, src, grp)
 			    log_msg(LOG_DEBUG, 0,
 				"The group too , trying to add it");
 
-			g = (struct listaddr *)
-			    malloc(sizeof(struct listaddr));
-			if (g == NULL)
+			g = malloc(sizeof(*g));
+			if (!g)
 			    log_msg(LOG_ERR, 0, "ran out of memory"); /* fatal */
 			g->al_addr = *grp;
 			g->sources = NULL;
@@ -732,8 +712,8 @@ accept_multicast_record(vifi, mard, src, grp)
 	    /* => send a m-a-s	*/
 	    /* start rxmt timer */
 	    if (s) {
-		cbk = (cbk_t *)malloc(sizeof(cbk_t));
-		if (cbk == NULL)
+		cbk = malloc(sizeof(*cbk));
+		if (!cbk)
 			log_msg(LOG_ERR, 0, "ran out of memory"); /* fatal */
 		g->al_rob = MLD6_ROBUSTNESS_VARIABLE;
 		cbk->g = g;
@@ -862,8 +842,8 @@ SetTimerV2(vifi, g, s)
 {
     cbk_t          *cbk;
 
-    cbk = (cbk_t *) malloc(sizeof(cbk_t));
-    if (cbk == NULL)
+    cbk = malloc(sizeof(*cbk));
+    if (!cbk)
 	log_msg(LOG_ERR, 0, "ran out of memory");	/*fatal */
     cbk->mifi = vifi;
     cbk->g = g;
@@ -953,7 +933,9 @@ SetTimerV1compat(mifi, g, interval)
 {
 	cbk_t *cbk;
 
-	cbk = (cbk_t *) malloc(sizeof(cbk_t));
+	cbk = malloc(sizeof(*cbk));
+	if (!cbk)
+		log_msg(LOG_ERR, 0, "ran out of memory");	/* fatal */
 	cbk->mifi = mifi;
 	cbk->g = g;
 	cbk->s = NULL;

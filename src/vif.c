@@ -55,25 +55,6 @@
  *
  */
 
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#include <sys/param.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include <net/route.h>
-#include <netinet/in.h>
-#include <netinet/icmp6.h>
-#ifdef __linux__
-#include <linux/mroute6.h>
-#else
-#include <netinet6/ip6_mroute.h>
-#endif
-#include <errno.h>
-#include <syslog.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
 #include "defs.h"
 #include "vif.h"
 #include "mld6.h"
@@ -359,8 +340,9 @@ start_vif(mifi_t vifi)
 		 */
 		v->uv_flags |= VIFF_QUERIER;
 		if (!v->uv_querier) {
-			v->uv_querier = malloc(sizeof(struct listaddr));
-			memset(v->uv_querier, 0, sizeof(struct listaddr));
+			v->uv_querier = calloc(1, sizeof(struct listaddr));
+			if (!v->uv_querier)
+				log_msg(LOG_ERR, 0, "ran out of memory");	/* fatal */
 		}
 
 		if (!v->uv_linklocal) {
@@ -824,7 +806,7 @@ struct sockaddr_in6 *src;
 int
 vif_forwarder(if_set *p1, if_set *p2)
 {
-	int idx;
+	size_t idx;
 
 	for (idx = 0; idx < sizeof(*p1) / sizeof(fd_mask); idx++) {
 		if (p1->ifs_bits[idx] & p2->ifs_bits[idx])
@@ -838,7 +820,7 @@ vif_forwarder(if_set *p1, if_set *p2)
 if_set *
 vif_and(if_set *p1, if_set *p2, if_set *result)
 {
-	int idx;
+	size_t idx;
 
 	IF_ZERO(result);
 
@@ -852,7 +834,7 @@ vif_and(if_set *p1, if_set *p2, if_set *result)
 if_set *
 vif_xor(if_set *p1, if_set *p2, if_set *result)
 {
-	int idx;
+	size_t idx;
 
 	IF_ZERO(result);
 

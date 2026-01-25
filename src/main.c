@@ -55,37 +55,12 @@
  *
  */
 
-#include <err.h>
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/queue.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include <net/route.h>
-#include <netinet/in.h>
-#include <netinet/icmp6.h>
-#ifdef __linux__
-#include <linux/mroute6.h>
-#else
-#include <netinet6/ip6_mroute.h>
-#endif
-#include <errno.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <signal.h>
-#include <string.h>
-#include <syslog.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <paths.h>
-#include <time.h>
-#include "pathnames.h"
 #include "defs.h"
 #include "debug.h"
 #include "mld6.h"
 #include "pim6.h"
 #include "vif.h"
+#include "pathnames.h"
 #include "routesock.h"
 #include "callout.h"
 #include "mrt.h"
@@ -161,7 +136,7 @@ int usage(int rc)
 {
     char buf[768];
 
-    printf("Usage: %s [-hnv] [-f FILE] [-d [LEVEL][,LEVEL]]\n"
+    printf("Usage: %s [-hnv] [-f FILE] [-d LEVEL[,LEVEL,...]]\n"
 	   "\n"
 	   "Options:\n"
 	   " -d LVL     Debug subsystem(s), separate args with comma (no space)\n"
@@ -598,6 +573,7 @@ static void sig_handler(int signo)
     {
     case SIGALRM:
 	sighandled |= GOT_SIGALRM;
+	/* FALLTHROUGH */
     case SIGINT:
     case SIGTERM:
 	sighandled |= GOT_SIGINT;

@@ -73,35 +73,6 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <../include/config.h>
-#endif
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
-#include <net/if.h>
-#include <net/route.h>
-#include <netinet/in.h>
-#include <netinet/icmp6.h>
-#ifdef __linux__
-#include <linux/mroute6.h>
-#else
-#include <netinet6/ip6_mroute.h>
-#endif
-#ifdef HAVE_NETINET6_PIM6_H
-#include <netinet6/pim6.h>
-#else
-#include <linux/pim.h>
-#endif
-#include <netinet/ip6.h>
-#include <arpa/inet.h>
-#include <string.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <syslog.h>
-#include <signal.h>
-#include <stdio.h>
 #include "defs.h"
 #include "vif.h"
 #include "mrt.h"
@@ -298,7 +269,7 @@ accept_pim6(pimlen)
     init_sin6(&dst);
 
     /* sanity check */
-    if (pimlen < sizeof(*pim)) {
+    if (pimlen < (int)sizeof(*pim)) {
         log_msg(LOG_WARNING, 0,
             "data field too short (%u bytes) for PIM header, from %s",
             pimlen, sa6_fmt(src));

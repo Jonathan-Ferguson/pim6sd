@@ -42,26 +42,6 @@
  *
  */
 
-
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
-#include <net/if.h>
-#include <net/route.h>
-#include <netinet/in.h>
-#include <netinet/icmp6.h>
-#ifdef __linux__
-#include <linux/mroute6.h>
-#else
-#include <netinet6/ip6_mroute.h>
-#endif
-#include <netinet/ip6.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <syslog.h>
-#include <string.h>
-#include <errno.h>
 #include "defs.h"
 #include "vif.h"
 #include "debug.h"
@@ -168,7 +148,7 @@ make_mld6v2_msg(int type, int code, struct sockaddr_in6 *src,
                 nbsrc++;
                 lstsrc->al_rob--;
                 if (timer_leftTimer(lstsrc->al_timerid) >
-                    MLD6_LAST_LISTENER_QUERY_INTERVAL / MLD6_TIMER_SCALE) {
+                    (int)(MLD6_LAST_LISTENER_QUERY_INTERVAL / MLD6_TIMER_SCALE)) {
                          timer_clearTimer(lstsrc->al_timerid);
                          SET_TIMER(lstsrc->al_timer,
                                    MLD6_LAST_LISTENER_QUERY_INTERVAL /
@@ -297,7 +277,7 @@ codafloat(unsigned int nbr, unsigned int *realnbr, unsigned int sizeexp,
 	unsigned int onebit = 1;
 	unsigned int mant;
 	u_int16_t code = 1;	/* code */
-	int i;
+	unsigned int i;
 
 	/* compute maximal exp value */
 	for (i = 1; i < sizeexp; i++)
@@ -349,14 +329,14 @@ codafloat(unsigned int nbr, unsigned int *realnbr, unsigned int sizeexp,
 }
 
 unsigned int
-decodeafloat(unsigned int nbr,unsigned int sizeexp,unsigned int sizemant)
+decodeafloat(unsigned int nbr, unsigned int sizeexp, unsigned int sizemant)
 {
 	unsigned int onebit = 1;
 	unsigned int mantmask = 0;
 	unsigned int mant = 0;
 	unsigned int exp = 0;
-	int i;
-	
+	unsigned int i;
+
     	for (i = 0; i < sizemant; i++)
 		mantmask = mantmask | (onebit << i);
 	mant = nbr & mantmask;

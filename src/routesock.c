@@ -55,32 +55,12 @@
  *
  */
 
-#include <sys/param.h>
-#include <sys/file.h>
-#include <sys/queue.h>
-#include <sys/types.h>
-#include <errno.h>
-#include <sys/socket.h>
-#include <net/if.h>
-#include <netinet/in.h>
 #include "defs.h"
-#include <sys/socket.h>
-#include <net/route.h>
-#ifdef __linux__
-#include <linux/mroute6.h>
-#else
-#include <netinet6/ip6_mroute.h>
-#endif
-#ifdef HAVE_ROUTING_SOCKETS
+
+#include <sys/file.h>
 #include <net/if_dl.h>
-#endif
-#include <arpa/inet.h>
 #include <netdb.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <syslog.h>
-#include <stdio.h>
+
 #include "vif.h"
 #include "debug.h"
 #include "routesock.h"
@@ -88,7 +68,6 @@
 #include "inet6.h"
 #include "pimd.h"
 
-#ifdef HAVE_ROUTING_SOCKETS
 union sockunion
 {
     struct sockaddr sa;
@@ -105,9 +84,7 @@ u_long          rtm_inits;
 /*
  * Local functions definitions.
  */
-static int getmsg 
-(struct rt_msghdr *, int,
-     struct rpfctl * rpfinfo);
+static int getmsg (struct rt_msghdr *, int, struct rpfctl * rpfinfo);
 
 /*
  * TODO: check again!
@@ -299,7 +276,7 @@ k_req_incoming(source, rpfp)
 /*
  * Returns TRUE on success, FALSE otherwise. rpfinfo contains the result.
  */
-int
+static int
 getmsg(rtm, msglen, rpfinfop)
     struct rt_msghdr *rtm;
     int             msglen;
@@ -444,78 +421,3 @@ getmsg(rtm, msglen, rpfinfop)
 
     return (TRUE);
 }
-#endif				/* HAVE_ROUTING_SOCKETS */
-
-#ifndef TAILQ_FIRST
-#define TAILQ_FIRST(head)	((head)->tqh_first)
-#endif
-#ifndef TAILQ_EMPTY
-#define TAILQ_EMPTY(head)	(!TAILQ_FIRST(head))
-#endif
-#ifndef TAILQ_NEXT
-#define TAILQ_NEXT(elm,field)	((elm)->field.tqe_next)
-#endif
-#ifndef TAILQ_FOREACH
-#define TAILQ_FOREACH(var, head, field)			\
-	for ((var) = TAILQ_FIRST((head));		\
-	     (var);					\
-	     (var) = TAILQ_NEXT((var), field))
-#endif
-
-TAILQ_HEAD(staticrt_list, staticrt);
-static struct staticrt_list staticrt_head;
-
-int add_static_rt_entry(paddr, plen, gwaddr)
-	struct sockaddr_in6 *paddr;
-	int plen;
-	struct sockaddr_in6 *gwaddr;
-{
-	struct staticrt *entry;
-	struct in6_addr mask;
-
-	memset(&mask, 0, sizeof(mask));
-	MASKLEN_TO_MASK6(plen, mask);
-
-	if (TAILQ_EMPTY(&staticrt_head))
-		TAILQ_INIT(&staticrt_head);
-
-	TAILQ_FOREACH(entry, &staticrt_head, link) {
-		if (inet6_same_prefix(paddr, &entry->paddr, &mask))
-			return -1;
-	}
-	entry = malloc(sizeof(struct staticrt));
-	entry->paddr = *paddr;
-	entry->plen = plen;
-	entry->gwaddr = *gwaddr;
-	TAILQ_INSERT_TAIL(&staticrt_head, entry, link);
-
-	return 0;
-}
-
-struct staticrt *find_static_rt_entry(addr)
-	struct sockaddr_in6 *addr;
-{
-	struct staticrt *entry, *bestentry = NULL;
-	int bestplen = -1;
-
-	if (TAILQ_EMPTY(&staticrt_head))
-		return NULL;
-
-	TAILQ_FOREACH(entry, &staticrt_head, link) {
-		struct in6_addr mask;
-
-		memset(&mask, 0, sizeof(mask));
-		MASKLEN_TO_MASK6(entry->plen, mask);
-
-		/* remembers the longest-match prefix */
-		if (!inet6_match_prefix(addr, &entry->paddr, &mask))
-			continue;
-		if (bestplen > entry->plen)
-			continue;
-
-		bestplen = entry->plen;
-		bestentry = entry;
-	}
-	return bestentry;
-}
-

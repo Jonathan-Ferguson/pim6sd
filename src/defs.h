@@ -53,6 +53,73 @@
 #include "../include/config.h"
 #endif
 
+/* Standard C library headers */
+#include <ctype.h>
+#include <err.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <ifaddrs.h>
+#include <netdb.h>
+#include <paths.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <syslog.h>
+#include <time.h>
+#include <unistd.h>
+
+#include <sys/file.h>
+#include <sys/ioctl.h>
+#include <sys/param.h>		/* Defines BSD system version (year & month) */
+#include <sys/queue.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+
+/* Network headers */
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <net/route.h>
+#include <netinet/in.h>
+#include <netinet/icmp6.h>
+#include <netinet/ip6.h>
+
+#ifdef __FreeBSD__
+#include <net/if_var.h>
+#endif
+
+#ifdef HAVE_NETINET6_IN6_VAR_H
+#include <netinet6/in6_var.h>
+#endif
+
+#ifdef __linux__
+#include <linux/mroute6.h>
+#include <linux/rtnetlink.h>
+#else
+#include <netinet6/ip6_mroute.h>
+#endif
+
+#ifdef HAVE_NETINET6_PIM6_H
+#include <netinet6/pim6.h>
+#else
+#include <linux/pim.h>
+#endif
+
+#include "debug.h"
+
+/*
+ * Various definitions to make it working for different platforms
+ */
+/* The old style sockaddr definition doesn't have sa_len */
+#if defined(_AIX) || (defined(BSD) && (BSD >= 199006)) /* sa_len was added with 4.3-Reno */
+#define HAVE_SA_LEN
+#endif
+
 #define	TRUE		1
 #define	FALSE		0
 #define ELSE		else           /* To make emacs cc-mode happy */

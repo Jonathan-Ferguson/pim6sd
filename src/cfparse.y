@@ -53,7 +53,7 @@
 #include "defs.h"
 #include "vif.h"
 #include "mrt.h"
-#include "routesock.h"
+#include "route.h"
 #include "rp.h"
 #include "netlink.h"
 
@@ -138,24 +138,25 @@ static int datathres_config (void);
 }
 
 %token EOS
-%token LOGGING LOGLEV NOLOGLEV
+%token LOGGING
+%token <num> LOGLEV NOLOGLEV
 %token YES NO
 %token REVERSELOOKUP
-%token PHYINT IFNAME ENABLE DISABLE PREFERENCE METRIC NOLISTENER
+%token PHYINT
+%token <val> IFNAME
+%token ENABLE DISABLE PREFERENCE METRIC NOLISTENER
 %token ROBUST QUERY_INT QUERY_INT_RESP MLD_VERSION LLQI
 %token GRPPFX
 %token STATICRP
 %token STATIC
 %token CANDRP CANDBSR TIME PRIORITY MASKLEN
-%token NUMBER STRING SLASH ANY
+%token <fl> NUMBER
+%token <val> STRING
+%token SLASH ANY
 %token REGTHRES DATATHRES RATE INTERVAL
 %token SOURCEOIF
 %token SRCMETRIC SRCPREF HELLOPERIOD GRANULARITY JPPERIOD
 %token DATATIME REGSUPTIME PROBETIME ASSERTTIME DEFVIFSTAT
-
-%type <num> LOGLEV NOLOGLEV
-%type <fl> NUMBER
-%type <val> STRING IFNAME
 %type <attr> if_attributes rp_substatement rp_attributes
 %type <attr> bsr_substatement bsr_attributes thres_attributes
 %type <num> staticrp_priority
@@ -204,9 +205,9 @@ phyint_statement:
 		struct uvif *v;
 
 		v = find_vif($2.v, CREATE, VIFF_ENABLED);
-		free($2.v);	/* XXX */
 		if (v == NULL) {
 			yywarn("Failed registering interface %s: %s", $2.v, strerror(errno));
+			free($2.v);
 			free_attr_list($3);
 			if (strict)
 				return(-1);
@@ -214,6 +215,7 @@ phyint_statement:
 		else {
 			struct attr_list *p;
 
+			free($2.v);
 			for (p = (struct attr_list *)v->config_attr;
 			     p && p->next; p = p->next)
 				;
@@ -1203,7 +1205,7 @@ grp_prefix_config()
 			continue;
 		}
 
-		if (!(~(*cand_rp_adv_message.prefix_cnt_ptr))) {
+		if (*cand_rp_adv_message.prefix_cnt_ptr == 0xff) {
 			log_msg(LOG_WARNING, 0,
 			    "Too many group_prefix configured. Truncating...");
 			break;
